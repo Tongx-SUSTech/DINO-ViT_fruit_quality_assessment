@@ -1,0 +1,16 @@
+tqdm
+numpy
+pandas
+matplotlib
+jupyterlab
+torchmetrics
+scikit-learn
+ipywidgets
+xgboost
+umap-learn
+torchsummary
+wandb
+torch
+torchvision
+seaborn
+umap
