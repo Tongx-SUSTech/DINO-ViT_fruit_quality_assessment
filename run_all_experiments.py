@@ -31,7 +31,7 @@ if __name__ == '__main__':
     experiment_3("cascifw")
 
     # Experiment 4:
-    # - take best shallow classifier from experiment 1 and combine it with different feature encoders
+    # - Create low-dimensional embedding representations using PCA.
     # - Paper reference: Fig. 4 and Fig. 5
     experiment_4("fayoum", subfolder="fayoum/")
     experiment_4("fayoum", subfolder="fayoum_oriented/", norm_orient=True)

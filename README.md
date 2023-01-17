@@ -31,4 +31,5 @@ Please note that this might take several hours and your machine should be set up
 
 ## Plots and tables
 
-Coming soon...
+Tables and figures are generated in the notebook `tables_and_figures.ipynb`.
+It relies on precomputed data that is saved in the `results` folder by the `run_all_experiments.py` script.

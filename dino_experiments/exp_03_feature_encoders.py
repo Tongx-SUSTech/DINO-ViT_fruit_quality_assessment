@@ -40,7 +40,7 @@ def main(dataset: str):
     for dino in ['dino_vits16', 'dino_vits8', 'dino_vitb16', 'dino_vitb8', 'dino_resnet50']:
         feature_encoder[dino] = torch.hub.load('facebookresearch/dino:main', dino, verbose=False).to(device)
 
-    logger = Logger(f"exp_04_{dataset}")
+    logger = Logger(f"exp_03_{dataset}")
     logger.log(["encoder", "model", "train_samples", "val_samples", "test_samples", "seed", "test_acc", "test_prec",
                 "test_recall", "test_f1"])
 
