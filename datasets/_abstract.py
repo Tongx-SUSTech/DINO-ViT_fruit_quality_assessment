@@ -10,8 +10,8 @@ from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
 import torchvision
 
-from .util import RoundrobinSampler
-from .augmentation import augmentation_strategies
+from datasets.util import RoundrobinSampler
+from datasets.augmentation import augmentation_strategies
 
 IMAGENET_NORMALIZE_VALUES = ((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
 

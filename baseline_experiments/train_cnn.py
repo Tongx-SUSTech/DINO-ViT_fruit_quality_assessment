@@ -10,14 +10,18 @@ import wandb
 import torchmetrics.classification as torch_metrics
 from tqdm import tqdm
 
-from datasets import CascIfwDataModule, FayoumBananaDataModule
+
+# from datasets import CascIfwDataModule, FayoumBananaDataModule
+from datasets import FayoumBananaDataModule
+# from datasets import AppleDataModule
 from dino_experiments.util import get_seeded_data_loader
 
-from .model import initialize_model, unfreeze_all_params
+from baseline_experiments.model import initialize_model, unfreeze_all_params
 
 AVAILABLE_DATASETS = {
-    "casc_ifw": CascIfwDataModule,
+    # "casc_ifw": CascIfwDataModule,
     "fayoum": FayoumBananaDataModule
+    # "apple": AppleDataModule
 }
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -25,7 +29,6 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def train(model, data_module, optimizer, scheduler, logger, ckpt_dir, num_epochs=25, class_weighting=True,
           early_stopping_metric="accuracy", early_stopping_patience=30, n_train_batches=-1):
-
     if class_weighting:
         class_weights = torch.FloatTensor(data_module.class_weights).to(device)
     else:
@@ -35,8 +38,13 @@ def train(model, data_module, optimizer, scheduler, logger, ckpt_dir, num_epochs
 
     ckpt_path = os.path.join(ckpt_dir, "checkpoint.pt")
     metrics = {
-        "train": {"accuracy": torch_metrics.Accuracy().to(device)},
-        "val": {"accuracy": torch_metrics.Accuracy().to(device)}
+        # "train": {"accuracy": torch_metrics.Accuracy().to(device)},
+        # "val": {"accuracy": torch_metrics.Accuracy().to(device)}
+        "train": {"accuracy": torch_metrics.Accuracy(num_classes=data_module.n_classes, average='macro',
+                                                     task='multiclass').to(device)},
+        "val": {"accuracy": torch_metrics.Accuracy(num_classes=data_module.n_classes, average='macro',
+                                                   task='multiclass').to(device)}
+
     }
 
     assert early_stopping_metric == "loss" or early_stopping_metric in metrics["val"].keys()
@@ -122,10 +130,11 @@ def train(model, data_module, optimizer, scheduler, logger, ckpt_dir, num_epochs
 @torch.no_grad()
 def test(model, data_module, logger):
     n_classes = data_module.n_classes
-    metrics = {"accuracy": torch_metrics.Accuracy().to(device),
-               "precision": torch_metrics.Precision(average=None, num_classes=n_classes).to(device),
-               "recall": torch_metrics.Recall(average=None, num_classes=n_classes).to(device),
-               "f1": torch_metrics.F1(average=None, num_classes=n_classes).to(device)
+    metrics = {"accuracy": torch_metrics.Accuracy(num_classes=data_module.n_classes, average='macro',
+                                                 task='multiclass').to(device),
+               "precision": torch_metrics.Precision(average=None, num_classes=n_classes, task='multiclass').to(device),
+               "recall": torch_metrics.Recall(average=None, num_classes=n_classes, task='multiclass').to(device),
+               "f1": torch_metrics.F1Score(average=None, num_classes=n_classes, task='multiclass').to(device)
                }
 
     model.eval()
@@ -150,7 +159,7 @@ def test(model, data_module, logger):
             value = metric.compute()
             if not value.shape == torch.Size([]):  # 0-dim tensor (contains 1 value)
                 value = str(value)  # convert tensor with more than 1 value to string to make it loggable
-                value = value[value.find("[")+1:value.rfind("]")]
+                value = value[value.find("[") + 1:value.rfind("]")]
             logger.run.summary[f"{dataset}_{metric_name}"] = value
             metric.reset()
 
@@ -169,7 +178,6 @@ def test(model, data_module, logger):
 
 
 def main(args):
-
     assert args.mode in ["all", "clf", "finetune"]
 
     torch.manual_seed(args.seed)
@@ -181,7 +189,10 @@ def main(args):
     # Initialize Data Module
     # dm = AVAILABLE_DATASETS[args.dataset](args.batch_size, y_labels=args.y_labels, normalize=True)
     class DummyDataModule(dict):
-        if args.dataset == "casc_ifw":
+        if args.dataset == "apple":
+            n_classes = 2
+            class_names = ["Fresh", "Rotten"]
+        elif args.dataset == "casc_ifw":
             n_classes = 2
             class_names = ["Healthy", "Damaged"]
         else:
@@ -194,8 +205,8 @@ def main(args):
 
         def __getitem__(self, item):
             assert item in ["train", "val", "test"]
-            return get_seeded_data_loader(args.dataset, item, args.seed, image_res=self.img_res,
-                                          batch_size=batch_size, use_sampler=self.use_sampler)
+            return get_seeded_data_loader(args.dataset, item, args.seed,
+                                          batch_size=batch_size)
 
     # Initialize model
     train_conv = args.mode == "all"
@@ -203,11 +214,13 @@ def main(args):
     model, input_size = initialize_model(args.model, DummyDataModule.n_classes, train_conv=train_conv,
                                          use_pretrained=not args.no_pretrain)
 
-
     dm = DummyDataModule(args.n_train_samples != -1, input_size)
 
     model = model.to(device)
+
     if device == "cuda":
+        # device_ids = [0]  # 如果你只有一个 GPU
+        # model = torch.nn.DataParallel(model, device_ids=device_ids)
         model = torch.nn.DataParallel(model, args.gpu_ids)
 
     # Initialize optimizer and scheduler
@@ -232,7 +245,7 @@ def main(args):
     print("start regular training")
     model = train(model, dm, optimizer, scheduler, logger=wandb, ckpt_dir=ckpt_dir, num_epochs=args.n_epochs,
                   class_weighting=args.class_weight, early_stopping_metric=args.es_metric,
-                  early_stopping_patience=args.es_patience, n_train_batches=args.n_train_samples//batch_size)
+                  early_stopping_patience=args.es_patience, n_train_batches=args.n_train_samples // batch_size)
 
     # finetuning
     if args.mode == "finetune":
@@ -247,7 +260,7 @@ def main(args):
         unfreeze_all_params(model)
         model = train(model, dm, optimizer, scheduler, logger=wandb, ckpt_dir=ckpt_dir, num_epochs=args.n_epochs,
                       class_weighting=args.class_weight, early_stopping_metric=args.es_metric,
-                      early_stopping_patience=args.es_patience, n_train_batches=args.n_train_samples//batch_size)
+                      early_stopping_patience=args.es_patience, n_train_batches=args.n_train_samples // batch_size)
 
     print("Testing...")
     test(model, dm, logger=wandb)
@@ -264,9 +277,9 @@ if __name__ == '__main__':
     parser.add_argument('--name', default='test', type=str, help='Run Name')
     parser.add_argument('--offline', default=False, action="store_true", help='wand offline mode')
     # dataset args
-    parser.add_argument('--dataset', default="casc_ifw", choices=AVAILABLE_DATASETS.keys())
+    parser.add_argument('--dataset', default="fayoum", choices=AVAILABLE_DATASETS.keys())
     parser.add_argument('--y_labels', default=None, type=str, help="Dataset specific label definition, if applicable.")
-    parser.add_argument('--batch_size', default=128, type=int, help='Batch size per GPU')
+    parser.add_argument('--batch_size', default=256, type=int, help='Batch size per GPU')
     # model args
     parser.add_argument('--model', default="resnet50", type=str, help='Name of pretrained model')
     parser.add_argument('--mode', default="all", choices=["all", "clf", "finetune"],
@@ -284,7 +297,7 @@ if __name__ == '__main__':
     parser.add_argument('--scheduler_patience', default=15, type=int, help='patience for lr adaption (n epochs)')
     # other args
     parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility')
-    parser.add_argument('--gpu_ids', default=[0, 1], type=eval, help='IDs of GPUs to use')
+    parser.add_argument('--gpu_ids', default=[0], type=eval, help='IDs of GPUs to use')
     parser.add_argument('--n_epochs', default=10000, type=int, help='Max number of epochs')
     parser.add_argument('--n_train_samples', default=-1, type=int, help='Number of training samples (DINO)')
 

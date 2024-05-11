@@ -2,6 +2,10 @@
 
 import torch.nn as nn
 from torchvision import models
+from torchvision.models import resnet50, ResNet50_Weights
+
+
+
 
 
 def set_parameter_requires_grad(model, unfreeze_prefix):
@@ -29,6 +33,7 @@ def initialize_model(model_name, num_classes, train_conv=False, use_pretrained=T
             model_ft = models.resnet18(pretrained=use_pretrained)
         elif model_name == "resnet50":
             model_ft = models.resnet50(pretrained=use_pretrained)
+            #model_ft = models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
         elif model_name == "resnet101":
             model_ft = models.resnet101(pretrained=use_pretrained)
         elif model_name == "resnet152":

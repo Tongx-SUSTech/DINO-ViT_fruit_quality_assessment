@@ -5,7 +5,7 @@ import pandas as pd
 import torchvision.transforms as transforms
 from torchvision.transforms import RandomHorizontalFlip
 
-from ._abstract import FileListDataModule, FileListDataset
+from datasets._abstract import FileListDataModule, FileListDataset
 
 CLASS_NAMES = {
     "ripeness": ["Green", "Yellowish_Green", "Midripen", "Overripen"],
@@ -34,7 +34,7 @@ class FayoumBananaDataModule(FileListDataModule):
     normalize_values = ((0.6237, 0.6076, 0.5367), (0.1759, 0.1925, 0.3011))
 
     def __init__(self, batch_size, image_resolution=(536, 960), y_labels="ripeness",
-                 data_dir="./data/Fayoum_Banana",
+                 data_dir="./datasets/data/Fayoum_Banana",
                  normalize=True, norm_orientation=False, augment="default", **kwargs):
 
         if y_labels is None:
@@ -53,7 +53,10 @@ class FayoumBananaDataModule(FileListDataModule):
 
         # dataset has a weird distirbution of 540 and 536 height. we want to remove that bias.
         pre_transform = lambda x: transforms.CenterCrop((536, 960))(x) if x.shape[-2] == 540 else x
-
+        '''
+        if not augment:  # 当augment为False时
+            augment = "none"  # 转换为"none"
+        '''
         super().__init__(batch_size, image_resolution=image_resolution, y_labels=y_labels, data_dir=data_dir,
                          normalize=normalize, augment=augment, custom_dataset_class=custom_ds,
                          pre_transform=pre_transform, **kwargs)

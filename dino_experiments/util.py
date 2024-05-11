@@ -4,14 +4,17 @@ from typing import List
 import numpy as np
 import torch
 
-from datasets import CascIfwDataModule, FayoumBananaDataModule
+#from datasets import CascIfwDataModule, FayoumBananaDataModule
+from datasets import FayoumBananaDataModule
+#from datasets import AppleDataModule
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 AVAILABLE_DATASETS = {
-    "cascifw": CascIfwDataModule,
+    # "cascifw": CascIfwDataModule,
     "fayoum": FayoumBananaDataModule
+    # "apple": AppleDataModule
 }
 
 
@@ -20,10 +23,14 @@ def get_seeded_data_loader(dataset, subset, seed, batch_size=100, resize=True, m
     assert dataset in AVAILABLE_DATASETS.keys()
     assert subset in ["train", "val", "test"]
     img_res = 224 if resize else None
-    if dataset == "cascifw" and subset == "train":
-        sampler = "weighted"
-    elif dataset == "fayoum" and subset == "train":
+    if dataset == "fayoum" and subset == "train":
         sampler = "roundrobin"
+    # elif dataset == "apple" and subset == "train":
+        # sampler = "roundrobin"
+    # elif dataset == "cascifw" and subset == "train":
+        # sampler = "weighted"
+    # elif dataset == "fayoum" and subset == "train":
+        # sampler = "roundrobin"
     else:
         sampler = "random"
     return AVAILABLE_DATASETS[dataset](batch_size=batch_size, image_resolution=img_res, normalize=True,

@@ -62,5 +62,6 @@ def main(dataset: str):
 
 
 if __name__ == '__main__':
-    main("fayoum")
-    main("cascifw")
+     main("fayoum")
+    #main("cascifw")
+    # main("apple")

@@ -26,8 +26,9 @@ GLOBAL_SEED = 42
 RESIZE = True
 
 XGBOOST_PARAMS = {
-    "cascifw": {"objective": 'binary:logistic'},
-    "fayoum": {"objective": "multi:softmax", "num_class": 4}
+    # "cascifw": {"objective": 'binary:logistic'},
+    "fayoum": {"objective": "multi:softmax", "num_class": 4},
+    # "apple": {"objective": "multi:softmax", "num_class": 2}
 }
 
 
@@ -94,4 +95,5 @@ def main(dataset: str):
 
 if __name__ == '__main__':
     main("fayoum")
-    main("cascifw")
+    # main("cascifw")
+    # main("apple")
